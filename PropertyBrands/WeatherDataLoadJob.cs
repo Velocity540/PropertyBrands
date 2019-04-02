@@ -24,7 +24,7 @@ namespace PropertyBrands
 
             // ToDo Save to database? Post to internal micro-servie?
 
-            Console.WriteLine(tt);
+            Console.WriteLine(tt.City.Name);
         }
     }
 }

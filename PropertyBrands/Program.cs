@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Quartz.Spi;
@@ -11,7 +12,7 @@ namespace PropertyBrands
     {
         private static IServiceProvider _serviceProvider;
 
-        private static void Main(string[] args)
+        private static async Task Main(string[] args)
         {
             var builder = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("AppSettings.json");
 
@@ -23,7 +24,8 @@ namespace PropertyBrands
             {
                 x.Service<MainService>(s =>
                 {
-                    s.ConstructUsing(() => new MainService());
+                    s.ConstructUsing(hostSettings => (MainService) _serviceProvider.GetService(typeof(IHostService)));
+
                     s.WhenStarted(ss => ss.OnStart());
                     s.WhenStopped(ss => ss.OnStop());
                 });
@@ -46,16 +48,15 @@ namespace PropertyBrands
             services.AddSingleton(weatherSettings);
 
             services.AddHttpClient<IWeatherDataLoadService, WeatherDataLoadService>().SetHandlerLifetime(TimeSpan.FromMinutes(5));
-
+            services.AddTransient<IHostService, MainService>();
+            services.AddTransient<IQuartzStartup, QuartzStartup>();
 
             services.AddTransient<IJobFactory, JobFactory>(provider => new JobFactory(services.BuildServiceProvider()));
             services.AddTransient<WeatherDataLoadJob>();
 
             _serviceProvider = services.BuildServiceProvider();
 
-            var quartz = new QuartzStartup(_serviceProvider, weatherSettings);
-
-            quartz.Start();
+  
         }
     }
 }

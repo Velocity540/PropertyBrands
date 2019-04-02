@@ -1,10 +1,17 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Quartz;
 using Quartz.Impl;
 
 namespace PropertyBrands
 {
-    public class QuartzStartup
+    public interface IQuartzStartup
+    {
+        Task Start();
+        void Stop();
+    }
+
+    public class QuartzStartup : IQuartzStartup
     {
         private readonly IServiceProvider _container;
         private readonly WeatherSettings _weatherSettings;
@@ -16,7 +23,7 @@ namespace PropertyBrands
             _weatherSettings = weatherSettings;
         }
 
-        public void Start()
+        public async Task Start()
         {
             if (_scheduler != null)
             {
@@ -24,9 +31,10 @@ namespace PropertyBrands
             }
 
             var schedulerFactory = new StdSchedulerFactory();
-            _scheduler = schedulerFactory.GetScheduler().Result;
+            _scheduler = await schedulerFactory.GetScheduler();
             _scheduler.JobFactory = new JobFactory(_container);
-            _scheduler.Start().Wait();
+            
+            await _scheduler.Start();
 
             foreach (var weatherSetting in _weatherSettings.ZipCodeIntervals)
             {
@@ -34,7 +42,7 @@ namespace PropertyBrands
 
                 var voteJobTrigger = TriggerBuilder.Create().StartNow().WithSimpleSchedule(s => s.WithIntervalInSeconds(weatherSetting.Interval).RepeatForever()).Build();
 
-                _scheduler.ScheduleJob(voteJob, voteJobTrigger).Wait();
+                await _scheduler.ScheduleJob(voteJob, voteJobTrigger);
             }
         }
 
