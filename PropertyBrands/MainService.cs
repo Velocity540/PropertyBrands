@@ -10,13 +10,13 @@ namespace PropertyBrands
     }
 
 
-    public class MainService : IHostService
+    public class HostService : IHostService
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly WeatherSettings _weatherSettings;
         private readonly IQuartzStartup _quartzStartup;
 
-        public MainService(IServiceProvider serviceProvider, WeatherSettings weatherSettings, IQuartzStartup quartzStartup)
+        public HostService(IServiceProvider serviceProvider, WeatherSettings weatherSettings, IQuartzStartup quartzStartup)
         {
             _serviceProvider = serviceProvider;
             _weatherSettings = weatherSettings;

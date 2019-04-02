@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Threading.Tasks;
+using Lamar;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Quartz.Spi;
@@ -10,7 +11,7 @@ namespace PropertyBrands
 {
     internal class Program
     {
-        private static IServiceProvider _serviceProvider;
+        private static Container _serviceProvider;
 
         private static async Task Main(string[] args)
         {
@@ -22,9 +23,9 @@ namespace PropertyBrands
 
             HostFactory.Run(x =>
             {
-                x.Service<MainService>(s =>
+                x.Service<HostService>(s =>
                 {
-                    s.ConstructUsing(hostSettings => (MainService) _serviceProvider.GetService(typeof(IHostService)));
+                    s.ConstructUsing(hostSettings => (HostService) _serviceProvider.GetInstance<IHostService>());
 
                     s.WhenStarted(ss => ss.OnStart());
                     s.WhenStopped(ss => ss.OnStop());
@@ -38,25 +39,31 @@ namespace PropertyBrands
             });
         }
 
-        private static void RegisterServices(IConfigurationRoot config)
+        private static void RegisterServices(IConfiguration config)
         {
-            var services = new ServiceCollection();
 
             var weatherSettings = config.GetSection("WeatherSettings").Get<WeatherSettings>();
 
-            services.AddScoped<IWeatherDataLoadService, WeatherDataLoadService>();
-            services.AddSingleton(weatherSettings);
+            var container = new Container(x =>
+            {
+                x.Scan(s =>
+                {
+                    s.TheCallingAssembly();
+                    s.WithDefaultConventions();
+                    s.LookForRegistries();
+                });
 
-            services.AddHttpClient<IWeatherDataLoadService, WeatherDataLoadService>().SetHandlerLifetime(TimeSpan.FromMinutes(5));
-            services.AddTransient<IHostService, MainService>();
-            services.AddTransient<IQuartzStartup, QuartzStartup>();
 
-            services.AddTransient<IJobFactory, JobFactory>(provider => new JobFactory(services.BuildServiceProvider()));
-            services.AddTransient<WeatherDataLoadJob>();
+                x.AddSingleton(weatherSettings);
+                x.AddHttpClient<IWeatherDataLoadService, WeatherDataLoadService>().SetHandlerLifetime(TimeSpan.FromMinutes(5));
+                x.AddTransient<WeatherDataLoadJob>();
+            });
 
-            _serviceProvider = services.BuildServiceProvider();
+            Console.WriteLine(container.WhatDoIHave());
+            Console.WriteLine(container.WhatDidIScan());
 
-  
+            _serviceProvider = container;
+
         }
     }
 }
